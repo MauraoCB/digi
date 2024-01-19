@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Application\**" />
+    <Compile Remove="Domain\Enumerators\**" />
+    <Compile Remove="Domain\Language\**" />
+    <Compile Remove="Infrastructure\**" />
+    <Content Remove="Application\**" />
+    <Content Remove="Domain\Enumerators\**" />
+    <Content Remove="Domain\Language\**" />
+    <Content Remove="Infrastructure\**" />
+    <EmbeddedResource Remove="Application\**" />
+    <EmbeddedResource Remove="Domain\Enumerators\**" />
+    <EmbeddedResource Remove="Domain\Language\**" />
+    <EmbeddedResource Remove="Infrastructure\**" />
+    <None Remove="Application\**" />
+    <None Remove="Domain\Enumerators\**" />
+    <None Remove="Domain\Language\**" />
+    <None Remove="Infrastructure\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
+  </ItemGroup>
+
+</Project>

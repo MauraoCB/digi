@@ -1,0 +1,214 @@
+﻿@page "/"
+
+@inject IJSRuntime JS;
+@inject HttpClient http;
+@inject Microsoft.Extensions.Configuration.IConfiguration config;
+
+<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.0.1/css/toastr.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.0.1/js/toastr.js"></script>
+
+<style>
+    .font18px{
+        font-family: Verdana; font-size:18px
+    }
+
+    .font12px {
+        font-family: Verdana;
+        font-size: 12px
+    }
+
+    .buttonCart 
+{
+    display: inline-block;
+    border: none;
+    width: 20px;
+    height: 20px;
+    background-color: transparent;
+    transform: scale(0.75);
+    transform-origin: left;
+    box-shadow: none;
+    outline: none; 
+}
+
+</style>
+<table><tr>
+    <td width="10%"><img src="/images/logo.png" width="110"/></td>
+    <td class="font18px" align="center" width="80%"><b>Produtos</b></td>
+    <td width="5%"><button title="Adicionar produtos ao carrinho" class="buttonCart" @onclick="AddCart_Click"><img width="30" src="/images/addCart.png" /></button></td>
+    <td width="5%">
+                   <button title="Visualizar carrinho" class="buttonCart" data-bs-toggle="modal" data-bs-target="#modalCarrinho"><img width="30" src="/images/showCart.png" /></button>    
+    </td>
+</tr>
+     
+</table>
+<br />
+
+<Alert Color="@alertColor" Dismissable="false"> <Icon Name="@alertIconName" class="me-2"></Icon>@alertMessage
+</Alert>
+
+<Grid TItem="Produto" class="table table-hover table-bordered table-striped" DataProvider="ListProdutos" 
+      AllowFiltering="false" Responsive="true" EmptyText="Nenhum registro encontrado"
+      AllowSelection="true"
+      SelectionMode="GridSelectionMode.Multiple"
+      SelectedItemsChanged="OnSelectedItemsChanged">
+
+    <GridColumn TItem="Produto" HeaderText="" PropertyName="Imagem" >
+        <img width="60" src="@context.Image" />
+    </GridColumn>
+    <GridColumn TItem="Produto" HeaderText="Produto" PropertyName="Name">
+        @context.Name
+    </GridColumn>
+    <GridColumn TItem="Produto" HeaderText="Detalhes" PropertyName="Detail">
+        @context.Detail
+    </GridColumn>
+      <GridColumn TItem="Produto" HeaderText="Preço" PropertyName="Price">
+        @context.Price.ToString("C2")
+    </GridColumn>
+      <GridColumn TItem="Produto" HeaderText="Descrição" PropertyName="Info">
+        @context.Info
+    </GridColumn>
+      <GridColumn TItem="Produto" HeaderText="Oferta" PropertyName="Offer">
+        @context.Offer
+    </GridColumn>
+    
+</Grid>
+
+<div class="modal fade" id="modalCarrinho" tabindex="-1" aria-labelledby="modalCarrinhoLiveLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalCarrinhoLiveLabel">Carrinho de Compras</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+                <table>
+                    <thead>
+                        <tr class="font12px">
+                            <th></th>
+                            <th>Produto</th>
+                            <th>Quantidade</th>
+                            <th>Preço</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbCarrinho">
+
+                    </tbody>
+                </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+@code {
+    List<Produto> produtos = new List<Produto>();
+    List<Produto> carrinhoCompras = new List<Produto>();
+
+    // alert
+    AlertColor alertColor = AlertColor.Primary;
+    IconName alertIconName = IconName.CheckCircleFill;
+    string alertMessage = "";
+
+    private HashSet<Produto> selectedProdutos = new();
+
+    async Task GetProdutos()
+    {
+        string urlApi = config.GetSection("urlApi")["ProdutosApi"];
+
+        try
+        {
+            produtos = await http.GetFromJsonAsync<List<Produto>>(urlApi);
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine (ex.Message);
+        }
+    }
+
+    private async Task<GridDataProviderResult<Produto>> ListProdutos(GridDataProviderRequest<Produto> request)
+    {
+        await Task.Delay(3000);
+        GetProdutos();
+
+        return (new GridDataProviderResult<Produto> { Data = produtos, TotalCount = produtos.Count });
+    }
+
+    #region Events
+    protected override async Task OnInitializedAsync() => GetProdutos();
+
+    private Task OnSelectedItemsChanged(HashSet<Produto> produtos)
+    {
+        selectedProdutos = produtos is not null && produtos.Any() ? produtos : new();
+        return Task.CompletedTask;
+    }
+
+    private async Task AddCart_Click(){
+        if (selectedProdutos.Count == 0)
+        {
+            alertColor = AlertColor.Info;
+            alertIconName = IconName.ExclamationCircleFill;
+            alertMessage = "Selecione pelo menos um produto";
+        }else
+        {
+            List<Produto> produtosExistentes = new List<Produto>();
+
+            foreach (var item in carrinhoCompras)
+            {
+                produtosExistentes.Add(item);
+            }
+
+            carrinhoCompras.Clear();
+
+            foreach (Produto item in selectedProdutos)
+            {
+                var produto = produtosExistentes.Where(p => p.Name == item.Name).FirstOrDefault();
+
+                var index = produtosExistentes.FindIndex(p => p.Name == item.Name);
+                if (index > -1)
+                {
+                    item.Quantity += produto.Quantity;
+                    produtosExistentes[index] = item;
+                }else
+                {
+                    item.Quantity = 1;
+                    produtosExistentes.Add(item);
+                }
+            }
+            carrinhoCompras = produtosExistentes;
+
+            string tabelaCarrinho = "";
+
+            foreach (var item in carrinhoCompras)
+            {
+                tabelaCarrinho += $"<tr class='font12px'><td><img src = 'item.Image' width='35'/></td><td>{item.Name}</td><td align='center'>{item.Quantity}</td><td align='center'>{item.Price}</td><td align='center'>{item.Total}</td></tr>";
+                await JS.InvokeVoidAsync("AddProduto", tabelaCarrinho);
+            }
+           
+
+            alertColor = AlertColor.Success;
+            alertIconName = IconName.CheckCircleFill;
+
+            if (selectedProdutos.Count == 1)
+            {
+               alertMessage = "Um produto foi adicionado ao carrinho";  
+            }else
+            {
+               alertMessage = $"{selectedProdutos.Count} produtos foram adicionados ao carrinho";
+            } 
+        } 
+      
+    }
+
+    #endregion
+}
+
+<script>
+    function AddProduto(produto) {
+        document.getElementById("tbCarrinho").innerHTML = produto;
+    };
+</script>
